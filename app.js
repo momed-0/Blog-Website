@@ -21,8 +21,6 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
 
-//Global Variable to store the Post
-let posts = [];
 
 
 /*----------------------MONGODB SetUp--------------------------------------------------------------------*/
@@ -43,10 +41,15 @@ const Post = mongoose.model("Post",postSchema);
 
 //to catch the root route
 app.get("/",function(req,res) {
-  res.render("home" , {
-    homeStartingContent : homeStartingContent,
-    posts : posts
-  });
+
+  Post.find({})
+      .then(function(foundPosts) {
+        res.render("home" , {
+          homeStartingContent : homeStartingContent,
+          posts : foundPosts
+        });
+      })
+
   
 });
 
@@ -75,30 +78,34 @@ app.get("/compose",function(req,res) {
 
 
 app.get("/posts/:postName",function(req,res) {
-  posts.forEach(function(post) {
-    let postTitle = _.lowerCase(post.title);
-    let orgTitle = post.title;
-    let orgContent = post.content;
-    let requestedTitle = _.lowerCase(req.params.postName);
-    if(postTitle === requestedTitle) {
-      res.render("post", {
-          orgTitle : orgTitle ,
-          orgContent : orgContent 
+  const Heading = req.params.postName;
+  Post.findOne({title:Heading})
+      .then(function(foundPost) {
+        if(foundPost) {
+          res.render("post", {
+            orgTitle : foundPost.title ,
+            orgContent : foundPost.body
+        });
+        }
+        else {
+          res.redirect("/");
+        }
+      })
+      .catch(function(err) {
+        console.log(err);
       });
-    }
-  });
 });
 
 
 /*-------------------------------------POST Route dealing with compose feature---------------------------------------------------------------------------------------------*/
 app.post('/compose', function(req, res) {
-  
-  Post.findOne({title:req.body.postTitle})
+  const title = req.body.postTitle;
+  Post.findOne({title:title})
       .then(function(foundPost) {
         if(!foundPost) {
           //create a new post
           const post = new Post ({
-            title: req.body.postTitle,
+            title: title,
             body: req.body.postContent
              });
              //save the post and redirect to root
